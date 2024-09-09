@@ -5,6 +5,7 @@ from .utils.db import db
 from .models.users import User
 from .config.config import config_dict
 from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
 
 def create_app(config=config_dict['dev']):
 
@@ -13,6 +14,8 @@ def create_app(config=config_dict['dev']):
     app.config.from_object(config)
 
     db.init_app(app)
+
+    jwt=JWTManager(app)
 
     migrate=Migrate(app, db)
 

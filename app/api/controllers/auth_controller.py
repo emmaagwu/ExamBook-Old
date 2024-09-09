@@ -4,6 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from flask import request
 from http import HTTPStatus
 from werkzeug.exceptions import Conflict,BadRequest
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required,get_jwt_identity
 
 
 auth_namespace=Namespace('auth', description='a namespace for authentication')
@@ -26,6 +27,12 @@ User_model = auth_namespace.model(
     }
 )
 
+login_model=auth_namespace.model(
+  'Login', {
+    'email': fields.String(required=True, description='The email of the user'),
+    'password': fields.String(required=True, description='The password of the user'),
+  }
+)
 
 
 @auth_namespace.route('/signup')
@@ -55,3 +62,31 @@ class Signup(Resource):
             raise Conflict(f"User with email {data.get('email')} already exists") from None
         
 
+@auth_namespace.route('/login')
+class Login(Resource):
+
+    @auth_namespace.expect(login_model)
+    def post(self):
+        """
+            Login a user
+        """
+        data = request.get_json()
+
+        email=data.get('email')
+        password=data.get('password')
+
+        print (email)
+
+        user = User.query.filter_by(email=email).first()
+
+        if user is not None and check_password_hash(user.password_hash,password):
+            access_token=create_access_token(identity=user.username)
+            refresh_token=create_refresh_token(identity=user.username)
+            response={
+                'access_token':access_token,
+                'refresh_token':refresh_token
+            }
+
+            return response, HTTPStatus.OK
+
+        raise BadRequest("Invalid Username or password")
