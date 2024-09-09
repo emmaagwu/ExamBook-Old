@@ -90,3 +90,19 @@ class Login(Resource):
             return response, HTTPStatus.OK
 
         raise BadRequest("Invalid Username or password")
+
+
+@auth_namespace.route('/refresh')
+class Refresh(Resource):
+
+    
+    @jwt_required(refresh=True)
+    def post(self):
+        username=get_jwt_identity()
+
+        access_token=create_access_token(identity=username)
+
+        return {'access_token': access_token}, HTTPStatus.OK
+    
+
+
