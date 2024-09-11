@@ -1,10 +1,14 @@
 from flask_restx import Namespace,Resource,fields
 from ..models.users import User
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import request
+from flask import request, current_app, jsonify
 from http import HTTPStatus
-from werkzeug.exceptions import Conflict,BadRequest
+from werkzeug.exceptions import Conflict, BadRequest
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required,get_jwt_identity
+from ..utils.token import generate_reset_token, verify_reset_token
+from ..utils.db import db
+from flask_mail import Message, Mail
+from datetime import datetime, timedelta
 
 
 auth_namespace=Namespace('auth', description='a namespace for authentication')
@@ -32,6 +36,20 @@ login_model=auth_namespace.model(
     'email': fields.String(required=True, description='The email of the user'),
     'password': fields.String(required=True, description='The password of the user'),
   }
+)
+
+
+password_reset_request_model = auth_namespace.model(
+    'PasswordResetRequest', {
+        'email': fields.String(required=True, description='The email of the user'),
+    }
+)
+
+password_reset_model = auth_namespace.model(
+    'PasswordReset', {
+        'token': fields.String(required=True, description='The reset token'),
+        'new_password': fields.String(required=True, description='The new password of the user'),
+    }
 )
 
 
@@ -105,4 +123,67 @@ class Refresh(Resource):
         return {'access_token': access_token}, HTTPStatus.OK
     
 
+
+# Password Reset Request Route
+@auth_namespace.route('/password-reset/request')
+class PasswordResetRequest(Resource):
+
+    @auth_namespace.expect(password_reset_request_model)
+    def post(self):
+        """
+        Request password reset
+        """
+        data = request.get_json()
+        email = data.get('email')
+        user = User.query.filter_by(email=email).first()
+
+        if not user:
+            return {'message': 'User does not exist'}, HTTPStatus.NOT_FOUND
+
+        # Generate reset token
+        reset_token = generate_reset_token(user.id)
+        user.reset_token = reset_token
+        user.reset_token_expiration = datetime.utcnow() + timedelta(hours=1)
+        user.save()
+
+        # Send reset email
+        mail = Mail(current_app)
+        msg = Message(
+            subject='Password Reset Request',
+            sender=current_app.config['MAIL_DEFAULT_SENDER'],
+            recipients=[user.email],
+            body=f'Please use the following token to reset your password: {reset_token}'
+        )
+        mail.send(msg)
+
+        return {'message': 'Password reset link sent'}, HTTPStatus.OK
+
+# Password Reset Route
+@auth_namespace.route('/password-reset/confirm')
+class PasswordResetConfirm(Resource):
+
+    @auth_namespace.expect(password_reset_model)
+    def post(self):
+        """
+        Reset password
+        """
+        data = request.get_json()
+        token = data.get('token')
+        new_password = data.get('new_password')
+
+        user_id = verify_reset_token(token)
+        if not user_id:
+            return {'message': 'Invalid or expired token'}, HTTPStatus.BAD_REQUEST
+
+        user = User.query.get(user_id)
+        if not user:
+            return {'message': 'User does not exist'}, HTTPStatus.NOT_FOUND
+
+        # Update user password
+        user.password_hash = generate_password_hash(new_password)
+        user.reset_token = None
+        user.reset_token_expiration = None
+        user.save()
+
+        return {'message': 'Password updated successfully'}, HTTPStatus.OK
 
