@@ -12,6 +12,7 @@ class User(db.Model):
     reset_token_expiration = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    questions = db.relationship('Question', backref='author', lazy=True)
 
     def __repr__(self):
         return f'<User: {self.username}>'
