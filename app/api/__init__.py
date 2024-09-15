@@ -8,6 +8,7 @@ from flask_migrate import Migrate
 from flask_jwt_extended import JWTManager
 from .questions import questions_ns
 from .subjects import subject_ns
+from .examinations import examination_ns
 
 def create_app(config=config_dict['dev']):
 
@@ -33,5 +34,6 @@ def create_app(config=config_dict['dev']):
     api.add_namespace(auth_ns)
     api.add_namespace(questions_ns)
     api.add_namespace(subject_ns)
+    api.add_namespace(examination_ns)
 
     return app

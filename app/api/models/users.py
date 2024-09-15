@@ -12,6 +12,7 @@ class User(db.Model):
     reset_token_expiration = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    is_admin = db.Column(db.Boolean, default=False)  # NEW FIELD for admin check
     questions = db.relationship('Question', backref='author', lazy=True)
 
     def __repr__(self):
@@ -24,3 +25,16 @@ class User(db.Model):
     def delete(self):
         db.session.delete(self)
         db.session.commit()
+
+
+class TokenBlacklist(db.Model):
+    __tablename__ = 'token_blacklist'
+
+    id = db.Column(db.Integer, primary_key=True)
+    jti = db.Column(db.String(36), nullable=False, unique=True)
+    token_type = db.Column(db.String(10), nullable=False)  # e.g., 'access' or 'refresh'
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    blacklisted_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<TokenBlacklist {self.jti}>'

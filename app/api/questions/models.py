@@ -13,8 +13,7 @@ class Question(db.Model):
     correct_answer = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
-    # user = db.relationship('User', backref='questions', lazy=True)
-    # subject = db.relationship('Subject', backref='questions', lazy=True)
+
 
     def __repr__(self):
         return f'<Question {self.question_text}>'

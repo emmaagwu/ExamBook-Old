@@ -37,6 +37,7 @@ def register_routes(api):
             payload['user_id'] = current_user_id            
             return create_question(payload), 201
 
+
     @api.route('/<int:id>')
     @api.response(404, 'Question not found')
     @api.param('id', 'The question identifier')
